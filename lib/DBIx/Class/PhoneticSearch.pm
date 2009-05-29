@@ -62,19 +62,87 @@ __END__
 
 =head1 NAME
 
-DBIx::Class::PhoneticSearch - The great new DBIx::Class::PhoneticSearch!
+DBIx::Class::PhoneticSearch - Phonetic search with DBIC
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+    package MySchema::User;
+  
+    use base 'DBIx::Class';
 
-Perhaps a little code snippet.
+    __PACKAGE__->load_components(qw(PhoneticSearch Core));
 
-    use DBIx::Class::PhoneticSearch;
+    __PACKAGE__->table('user');
 
-    my $foo = DBIx::Class::PhoneticSearch->new();
-    ...
+    __PACKAGE__->add_columns(
+      id       => { data_type => 'integer', auto_increment => 1, },
+      surname  => { data_type => 'character varying', 
+                    phonetic_search => 1 },
+      forename => { data_type => 'character varying', 
+                    phonetic_search => { algorithm => 'Koeln', 
+                                         no_indices => 1 } },
+      
+    );
+
+    __PACKAGE__->set_primary_key('id');
+
+    __PACKAGE__->resultset_class('DBIx::Class::ResultSet::PhoneticSearch');
     
+    
+  # somewhere else
+  $rs = $schema->resultset('User');
+  $rs->create({ forename => 'John', surname => 'Night' });
+  
+  $rs->search_phonetic({ forename => 'Jon' })->first->forename;  # John
+  $rs->search_phonetic({ surname => 'Knight' })->first->surname; # Night
+  $rs->search_phonetic({ forename => 'Jon', 
+                         surname => 'Knight' })->first->surname; # Night
+  $rs->search_phonetic([ surname => 'Smith' ,
+                         surname => 'Knight' ])->first->surname; # Night (ORed)
+  
+    
+
+=head1 DESCRIPTION
+
+This components allows for phonetic search of columns. 
+If you add the C<phonetic_search> attribute to a 
+column, this component will add an extra column to the result class which is basically an index of the value
+based on its pronunciation. Every time the column is updated,
+the phonetic column is set as well. It uses L<Text::Phonetic> to compute the phonetic representation
+of the value in that column. Use L</search_phonetic> to search for rows which sound similar to a given value.
+
+The name of the phonetic column consists of the original column name and the algorithm used:
+
+  $column + _phonetic_ + $algorithm
+  
+The default algorithm is L<Text::Phonetic::Phonix>.
+
+This component will also add indices for both the column and the phonetic column. This can be disabled by setting
+L</no_indices>.
+
+To set the phonetic column on an already populated resultset use L</update_phonetic_columns>.
+
+=head1 RESULTSET METHODS
+
+=head2 search_phonetic
+
+This method is used to search for 
+
+You can call this method with either an arrayref or hashref. 
+Those refs are pairs of column names and values.
+Arrayref will cause a query which will join the queries with C<OR>.
+A hashref will join them with an C<AND>.
+
+=head2 update_phonetic_column
+
+  $rs->update_phonetic_column('columnname');
+
+This method will update the phonetic column of a column. 
+
+=head2 update_phonetic_columns
+
+Calls L</update_phonetic_column> for each column with an phonetic column.
+
 =head1 ADVANCED CONFIGURATION
 
 =head2 algorithm
@@ -88,6 +156,20 @@ Defaults to C<Phonix>.
 =head2 no_indices
 
 By default this module will create indices on both the source column and the phonetic column. Set this attribute to a true value to disable this behaviour.
+
+=head1 OVERWRITTEN RESULT METHODS
+
+=head2 register_column
+
+Set up the environment and add the phonetic columns.
+
+=head2 store_column
+
+Set the phonetic column to the encoded value.
+
+=head2 sqlt_deploy_hook
+
+This is where the indices are created.
 
 =head1 AUTHOR
 
