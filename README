@@ -48,7 +48,14 @@ DESCRIPTION
     the algorithm used:
 
       $column + _phonetic_ + $algorithm
+
+    The above example will require two additional columns:
+
+      surname_phonetic_phonix character varying,
+      forename_phonetic_koeln character varying,
   
+    Make sure they exist in you database!
+
     The default algorithm is Text::Phonetic::Phonix.
 
     This component will also add indices for both the column and the
@@ -59,11 +66,12 @@ DESCRIPTION
 
 RESULTSET METHODS
   search_phonetic
-    This method is used to search for
+    This method is used to search a resultset for a given set of
+    column/value pairs.
 
-    You can call this method with either an arrayref or hashref. Those refs
-    are pairs of column names and values. Arrayref will cause a query which
-    will join the queries with `OR'. A hashref will join them with an `AND'.
+    You can call this method with either an arrayref or hashref. Arrayref
+    will cause a query which will join the queries with `OR'. A hashref will
+    join them with an `AND'.
 
   update_phonetic_column
       $rs->update_phonetic_column('columnname');
