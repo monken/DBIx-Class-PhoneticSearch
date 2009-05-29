@@ -3,18 +3,66 @@ package DBIx::Class::PhoneticSearch;
 use warnings;
 use strict;
 
+use Class::Load qw();
+
+use constant PHONETIC_ALGORITHMS =>
+  qw(DaitchMokotoff DoubleMetaphone Koeln Metaphone Phonem Phonix Soundex SoundexNara);
+
+sub register_column {
+    my ( $self, $column, $info, @rest ) = @_;
+
+    $self->next::method( $column, $info, @rest );
+
+    if ( my $config = $info->{phonetic_search} ) {
+        $info->{phonetic_search} = $config = { algorithm => $config }
+          unless ( ref $config eq "HASH" );
+        $config->{algorithm} = 'Phonix'
+          unless ( grep { $config->{algorithm} eq $_ } PHONETIC_ALGORITHMS );
+        $self->add_column( $column
+              . '_phonetic_'
+              . lc( $config->{algorithm} ) =>
+              { data_type => 'character varying', is_nullable => 1 } );
+    }
+
+    return undef;
+}
+
+sub store_column {
+    my ( $self, $name, $value, @rest ) = @_;
+
+    my $info = $self->column_info($name);
+
+    if ( my $config = $info->{phonetic_search} ) {
+        my $class  = 'Text::Phonetic::' . $config->{algorithm};
+        my $column = $name . '_phonetic_' . lc( $config->{algorithm} );
+        Class::Load::load_class($class);
+        $self->set_column( $column, $class->new->encode($value) );
+    }
+
+    return $self->next::method( $name, $value, @rest );
+}
+
+sub sqlt_deploy_hook {
+    my ($self, $table, @rest) = @_;
+    $self->maybe::next::method($table, @rest);
+    foreach my $column($self->columns) {
+        next unless(my $config = $self->column_info($column)->{phonetic_search});
+        next if($config->{no_indices});
+        my $phonetic_column = $column.'_phonetic_' . lc( $config->{algorithm} );
+        $table->add_index(name => 'idx_'.$phonetic_column, fields => [$phonetic_column]);
+        $table->add_index(name => 'idx_'.$column, fields => [$column]);
+        
+    }
+    
+}
+
+1;
+
+__END__
+
 =head1 NAME
 
 DBIx::Class::PhoneticSearch - The great new DBIx::Class::PhoneticSearch!
-
-=head1 VERSION
-
-Version 0.01
-
-=cut
-
-our $VERSION = '0.01';
-
 
 =head1 SYNOPSIS
 
@@ -26,27 +74,20 @@ Perhaps a little code snippet.
 
     my $foo = DBIx::Class::PhoneticSearch->new();
     ...
+    
+=head1 ADVANCED CONFIGURATION
 
-=head1 EXPORT
+=head2 algorithm
 
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
+Choose one of C<DaitchMokotoff DoubleMetaphone Koeln Metaphone Phonem Phonix Soundex SoundexNara>.
 
-=head1 FUNCTIONS
+See L<Text::Phonetic> for more details.
 
-=head2 function1
+Defaults to C<Phonix>.
 
-=cut
+=head2 no_indices
 
-sub function1 {
-}
-
-=head2 function2
-
-=cut
-
-sub function2 {
-}
+By default this module will create indices on both the source column and the phonetic column. Set this attribute to a true value to disable this behaviour.
 
 =head1 AUTHOR
 
@@ -104,4 +145,3 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of DBIx::Class::PhoneticSearch
