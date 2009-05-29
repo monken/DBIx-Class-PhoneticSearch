@@ -114,6 +114,14 @@ of the value in that column. Use L</search_phonetic> to search for rows which so
 The name of the phonetic column consists of the original column name and the algorithm used:
 
   $column + _phonetic_ + $algorithm
+
+The above example will require two additional columns:
+
+  surname_phonetic_phonix character varying,
+  forename_phonetic_koeln character varying,
+  
+Make sure they exist in you database!
+  
   
 The default algorithm is L<Text::Phonetic::Phonix>.
 
@@ -126,10 +134,9 @@ To set the phonetic column on an already populated resultset use L</update_phone
 
 =head2 search_phonetic
 
-This method is used to search for 
+This method is used to search a resultset for a given set of column/value pairs.
 
-You can call this method with either an arrayref or hashref. 
-Those refs are pairs of column names and values.
+You can call this method with either an arrayref or hashref.
 Arrayref will cause a query which will join the queries with C<OR>.
 A hashref will join them with an C<AND>.
 
