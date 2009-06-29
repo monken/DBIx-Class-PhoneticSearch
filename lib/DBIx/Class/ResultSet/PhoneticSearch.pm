@@ -33,7 +33,7 @@ sub search_phonetic {
           
         my $class  = 'Text::Phonetic::' . $config->{algorithm};
         my $column = $column . '_phonetic_' . lc( $config->{algorithm} );
-        Class::Load::load_class($class);
+        $self->_require_class($class);
         my $encoded_value = $class->new->encode($value);
         
         push(@{$query}, { "$prefix$column" => $encoded_value});
@@ -61,7 +61,7 @@ sub update_phonetic_column {
     return 0 unless ($config);
     my $class           = 'Text::Phonetic::' . $config->{algorithm};
     my $phonetic_column = $column . '_phonetic_' . lc( $config->{algorithm} );
-    Class::Load::load_class($class);
+    $self->_require_class($class);
     my $rs = $self->search( { $column => { '!=' => undef } } );
 
     while ( my $row = $rs->next ) {
@@ -70,6 +70,22 @@ sub update_phonetic_column {
         $i++;
     }
     return $i;
+}
+
+sub _require_class {
+    my ($self, $class) = @_;
+
+    croak "class argument missing" if !defined $class;
+
+    $class =~ s|::|/|g;
+    $class .= ".pm";
+
+    if ( !exists $::INC{$class} ) {
+        eval { require $class };
+        croak $@ if $@;
+    }
+
+    return;
 }
 
 1;

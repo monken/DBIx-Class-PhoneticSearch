@@ -2,8 +2,10 @@ package DBIx::Class::PhoneticSearch;
 
 use warnings;
 use strict;
+use Carp;
 
-use Class::Load qw();
+our $VERSION = '0.01';
+
 
 use constant PHONETIC_ALGORITHMS =>
   qw(DaitchMokotoff DoubleMetaphone Koeln Metaphone Phonem Phonix Soundex SoundexNara);
@@ -35,7 +37,7 @@ sub store_column {
     if ( my $config = $info->{phonetic_search} ) {
         my $class  = 'Text::Phonetic::' . $config->{algorithm};
         my $column = $name . '_phonetic_' . lc( $config->{algorithm} );
-        Class::Load::load_class($class);
+        $self->_require_class($class);
         $self->set_column( $column, $class->new->encode($value) );
     }
 
@@ -54,6 +56,22 @@ sub sqlt_deploy_hook {
         
     }
     
+}
+
+sub _require_class {
+    my ($self, $class) = @_;
+
+    croak "class argument missing" if !defined $class;
+
+    $class =~ s|::|/|g;
+    $class .= ".pm";
+
+    if ( !exists $::INC{$class} ) {
+        eval { require $class };
+        croak $@ if $@;
+    }
+
+    return;
 }
 
 1;
@@ -140,6 +158,8 @@ You can call this method with either an arrayref or hashref.
 Arrayref will cause a query which will join the queries with C<OR>.
 A hashref will join them with an C<AND>.
 
+Returns a L<DBIx::Class::ResultSet>.
+
 =head2 update_phonetic_column
 
   $rs->update_phonetic_column('columnname');
@@ -219,10 +239,6 @@ L<http://cpanratings.perl.org/d/DBIx-Class-PhoneticSearch>
 L<http://search.cpan.org/dist/DBIx-Class-PhoneticSearch/>
 
 =back
-
-
-=head1 ACKNOWLEDGEMENTS
-
 
 =head1 COPYRIGHT & LICENSE
 

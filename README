@@ -73,6 +73,8 @@ RESULTSET METHODS
     will cause a query which will join the queries with `OR'. A hashref will
     join them with an `AND'.
 
+    Returns a DBIx::Class::ResultSet.
+
   update_phonetic_column
       $rs->update_phonetic_column('columnname');
 
@@ -135,7 +137,6 @@ SUPPORT
     * Search CPAN
         http://search.cpan.org/dist/DBIx-Class-PhoneticSearch/
 
-ACKNOWLEDGEMENTS
 COPYRIGHT & LICENSE
     Copyright 2009 Moritz Onken, all rights reserved.
 

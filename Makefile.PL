@@ -8,7 +8,6 @@ license  'perl';
 requires 'DBIx::Class' => '0.08103';
 requires 'SQL::Translator';
 requires 'Text::Phonetic';
-requires 'Class::Load';
 
 build_requires 'Test::More';
 
